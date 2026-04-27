@@ -74,10 +74,15 @@ input {
   pointer-events: auto;
 }
 
+.topbar > div:first-child {
+  min-width: 0;
+}
+
 .top-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
 }
 
 .lang-toggle {
@@ -558,7 +563,7 @@ footer {
   }
 
   h1 {
-    max-width: 230px;
+    max-width: min(230px, calc(100vw - 236px));
     font-size: 24px;
     line-height: 1.02;
   }
@@ -598,7 +603,7 @@ footer {
   .left-rail {
     left: 14px;
     right: 14px;
-    top: 78px;
+    top: 104px;
     bottom: auto;
     width: auto;
     gap: 8px;
@@ -726,7 +731,7 @@ footer {
 
 @media (max-width: 520px) {
   .left-rail {
-    top: 74px;
+    top: 100px;
   }
 
   .metric {
@@ -760,8 +765,12 @@ footer {
 
 @media (max-width: 380px), (max-height: 720px) {
   h1 {
-    max-width: 132px;
+    max-width: min(132px, calc(100vw - 198px));
     font-size: 19px;
+  }
+
+  .left-rail {
+    top: 92px;
   }
 
   .lang-toggle {
