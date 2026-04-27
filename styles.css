@@ -53,8 +53,8 @@ input {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(245, 248, 251, 0.92), rgba(245, 248, 251, 0.58) 34%, rgba(245, 248, 251, 0.1) 72%),
-    linear-gradient(180deg, rgba(245, 248, 251, 0.86), rgba(245, 248, 251, 0.1) 30%, rgba(245, 248, 251, 0.72));
+    linear-gradient(90deg, rgba(245, 248, 251, 0.68), rgba(245, 248, 251, 0.28) 34%, rgba(245, 248, 251, 0.02) 72%),
+    linear-gradient(180deg, rgba(245, 248, 251, 0.52), rgba(245, 248, 251, 0.04) 30%, rgba(245, 248, 251, 0.34));
 }
 
 .topbar {
@@ -92,6 +92,27 @@ input {
   box-shadow: var(--shadow);
   color: var(--muted);
   cursor: pointer;
+}
+
+.trail-toggle {
+  min-width: 112px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(8, 145, 178, 0.35);
+  border-radius: 8px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+  color: #075f73;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trail-toggle[data-active="true"] {
+  background: #0f7286;
+  color: #ffffff;
+  border-color: #0f7286;
 }
 
 .lang-toggle span {
@@ -518,8 +539,8 @@ footer {
 
   .map-shade {
     background:
-      linear-gradient(180deg, rgba(245, 248, 251, 0.94), rgba(245, 248, 251, 0.16) 48%, rgba(245, 248, 251, 0.9)),
-      linear-gradient(90deg, rgba(245, 248, 251, 0.7), rgba(245, 248, 251, 0.1));
+      linear-gradient(180deg, rgba(245, 248, 251, 0.72), rgba(245, 248, 251, 0.08) 48%, rgba(245, 248, 251, 0.72)),
+      linear-gradient(90deg, rgba(245, 248, 251, 0.46), rgba(245, 248, 251, 0.04));
   }
 
   .topbar {
@@ -556,6 +577,13 @@ footer {
   .lang-toggle {
     min-width: 66px;
     height: 36px;
+  }
+
+  .trail-toggle {
+    min-width: 84px;
+    height: 36px;
+    padding: 0 9px;
+    font-size: 11px;
   }
 
   .lang-toggle span {
@@ -731,18 +759,29 @@ footer {
 
 @media (max-width: 380px), (max-height: 720px) {
   h1 {
-    max-width: 174px;
-    font-size: 21px;
+    max-width: 132px;
+    font-size: 19px;
   }
 
   .lang-toggle {
-    min-width: 60px;
+    min-width: 54px;
+  }
+
+  .trail-toggle {
+    min-width: 66px;
+    height: 32px;
+    padding: 0 6px;
+    font-size: 10px;
   }
 
   .status {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .top-actions {
+    gap: 4px;
   }
 
   .filters {

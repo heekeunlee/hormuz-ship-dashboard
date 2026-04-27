@@ -13,6 +13,7 @@ const CATEGORIES = [
 const I18N = {
   ko: {
     eyebrow: 'Live AIS · 호르무즈 해협',
+    title: '호르무즈 선박 대시보드',
     metricTotal: '전체 선박',
     metricChoke: '해협 내부',
     metricTankers: '탱커',
@@ -42,6 +43,9 @@ const I18N = {
     unknown: '미상',
     unnamed: '[이름 없음]',
     noDestination: '-',
+    trailToggleOff: '48시간 궤적',
+    trailToggleOn: '궤적 끄기',
+    trailLoading: '궤적 로딩',
     secondsAgo: (n) => `${n}초 전`,
     minutesAgo: (n) => `${n}분 전`,
     hoursAgo: (n) => `${n}시간 전`,
@@ -57,6 +61,7 @@ const I18N = {
   },
   en: {
     eyebrow: 'Live AIS · Strait of Hormuz',
+    title: 'Hormuz Ship Dashboard',
     metricTotal: 'Total vessels',
     metricChoke: 'In chokepoint',
     metricTankers: 'Tankers',
@@ -86,6 +91,9 @@ const I18N = {
     unknown: 'Unknown',
     unnamed: '[Unnamed]',
     noDestination: '-',
+    trailToggleOff: '48h trails',
+    trailToggleOn: 'Hide trails',
+    trailLoading: 'Loading trails',
     secondsAgo: (n) => `${n}s ago`,
     minutesAgo: (n) => `${n}m ago`,
     hoursAgo: (n) => `${n}h ago`,
@@ -110,6 +118,10 @@ const state = {
   lang: localStorage.getItem('dashboardLang') === 'en' ? 'en' : 'ko',
   statusKind: '',
   statusKey: 'connecting',
+  trailsVisible: false,
+  trailsLoaded: false,
+  trailsLoading: false,
+  trailRows: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -117,6 +129,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   status: $('status'),
   langToggle: $('langToggle'),
+  trailToggle: $('trailToggle'),
   total: $('total'),
   choke: $('choke'),
   tankers: $('tankers'),
@@ -170,11 +183,14 @@ map.addControl(new maplibregl.ScaleControl({ unit: 'nautical' }), 'bottom-left')
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
 
 map.on('load', async () => {
+  enhanceMapContrast();
   await addShipImages();
   addSources();
   addLayers();
   loadAll();
 });
+
+map.on('styledata', enhanceMapContrast);
 
 function setStatus(kind, text) {
   state.statusKind = kind;
@@ -225,7 +241,22 @@ async function fetchJson(url) {
   return response.json();
 }
 
+async function fetchTrailRows() {
+  const [history, current] = await Promise.all([
+    fetchJson(`${API}/transits/history?hours=48&limit=500`),
+    fetchJson(`${API}/transits/current`),
+  ]);
+  return [
+    ...((history && history.transits) || []),
+    ...((current && current.transits) || []),
+  ];
+}
+
 function addSources() {
+  map.addSource('trails', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
   map.addSource('ships', {
     type: 'geojson',
     data: { type: 'FeatureCollection', features: [] },
@@ -241,6 +272,27 @@ function addSources() {
 }
 
 function addLayers() {
+  map.addLayer({
+    id: 'trail-glow',
+    type: 'line',
+    source: 'trails',
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': ['get', 'glowWidth'],
+      'line-opacity': ['get', 'glowOpacity'],
+      'line-blur': 4,
+    },
+  });
+  map.addLayer({
+    id: 'trail-line',
+    type: 'line',
+    source: 'trails',
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': ['get', 'width'],
+      'line-opacity': ['get', 'opacity'],
+    },
+  });
   map.addLayer({
     id: 'choke-fill',
     type: 'fill',
@@ -274,7 +326,7 @@ function addLayers() {
     paint: {
       'circle-color': ['get', 'color'],
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 3, 9, 9, 12, 16],
-      'circle-opacity': 0.18,
+      'circle-opacity': 0.26,
       'circle-blur': 0.9,
     },
   });
@@ -284,7 +336,7 @@ function addLayers() {
     source: 'ships',
     layout: {
       'icon-image': ['case', ['get', 'moving'], 'ship-arrow', 'ship-dot'],
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.36, 9, 0.68, 12, 1.05],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.42, 9, 0.76, 12, 1.12],
       'icon-rotate': ['get', 'bearing'],
       'icon-rotation-alignment': 'map',
       'icon-allow-overlap': true,
@@ -293,7 +345,7 @@ function addLayers() {
     paint: {
       'icon-color': ['get', 'color'],
       'icon-halo-color': '#020617',
-      'icon-halo-width': 0.6,
+      'icon-halo-width': 0.9,
     },
   });
   map.addLayer({
@@ -506,6 +558,126 @@ function showShipPopup(event) {
     .addTo(map);
 }
 
+async function toggleTrails() {
+  if (state.trailsLoading) return;
+  state.trailsVisible = !state.trailsVisible;
+  els.trailToggle.dataset.active = state.trailsVisible ? 'true' : 'false';
+
+  if (!state.trailsVisible) {
+    renderTrails([]);
+    applyTrailButtonLabel();
+    return;
+  }
+
+  if (!state.trailsLoaded) {
+    state.trailsLoading = true;
+    applyTrailButtonLabel();
+    try {
+      state.trailRows = await fetchTrailRows();
+      state.trailsLoaded = true;
+    } catch (error) {
+      console.error(error);
+      state.trailsVisible = false;
+      els.trailToggle.dataset.active = 'false';
+    } finally {
+      state.trailsLoading = false;
+    }
+  }
+
+  if (state.trailsVisible) renderTrails(state.trailRows);
+  applyTrailButtonLabel();
+}
+
+function renderTrails(rows) {
+  const source = map.getSource('trails');
+  if (!source) return;
+  source.setData({
+    type: 'FeatureCollection',
+    features: rows.flatMap((row) => trailFeatures(row)),
+  });
+}
+
+function trailFeatures(row) {
+  const start = pointFrom(row.entryLon, row.entryLat);
+  const end = pointFrom(row.exitLon ?? row.lon, row.exitLat ?? row.lat);
+  if (!start || !end) return [];
+
+  const ageMs = Date.now() - Number(row.enteredAt || row.exitedAt || row.lastSeen || 0);
+  if (ageMs > 48 * 60 * 60 * 1000 && !row.lastSeen) return [];
+
+  const color = colors[row.category] || colors.unknown;
+  const segments = 12;
+  const features = [];
+  for (let i = 0; i < segments; i += 1) {
+    const a = i / segments;
+    const b = (i + 1) / segments;
+    const alpha = (i + 1) / segments;
+    features.push({
+      type: 'Feature',
+      properties: {
+        color,
+        opacity: 0.08 + alpha * 0.62,
+        glowOpacity: 0.03 + alpha * 0.16,
+        width: 1.2 + alpha * 3.4,
+        glowWidth: 5 + alpha * 11,
+      },
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          interpolatePoint(start, end, a),
+          interpolatePoint(start, end, b),
+        ],
+      },
+    });
+  }
+  return features;
+}
+
+function pointFrom(lon, lat) {
+  const x = Number(lon);
+  const y = Number(lat);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return [x, y];
+}
+
+function interpolatePoint(start, end, tValue) {
+  return [
+    start[0] + (end[0] - start[0]) * tValue,
+    start[1] + (end[1] - start[1]) * tValue,
+  ];
+}
+
+function enhanceMapContrast() {
+  const style = map.getStyle();
+  if (!style || !style.layers) return;
+  for (const layer of style.layers) {
+    const id = layer.id || '';
+    const sourceLayer = layer['source-layer'] || '';
+    try {
+      if (layer.type === 'background') {
+        map.setPaintProperty(id, 'background-color', '#eef4f7');
+      } else if (layer.type === 'fill' && (sourceLayer === 'water' || /water|ocean|sea/i.test(id))) {
+        map.setPaintProperty(id, 'fill-color', '#8ed0ef');
+        map.setPaintProperty(id, 'fill-opacity', 1);
+      } else if (layer.type === 'fill' && /land|earth|park|sand/i.test(id)) {
+        map.setPaintProperty(id, 'fill-opacity', 1);
+      } else if (layer.type === 'line' && /water|river|marine/i.test(id)) {
+        map.setPaintProperty(id, 'line-color', '#2b92c3');
+      } else if (layer.type === 'line' && /road|boundary/i.test(id)) {
+        map.setPaintProperty(id, 'line-opacity', 0.82);
+      } else if (layer.type === 'symbol') {
+        if (map.getPaintProperty(id, 'text-color') !== undefined) {
+          map.setPaintProperty(id, 'text-color', '#273946');
+          map.setPaintProperty(id, 'text-halo-color', '#ffffff');
+          map.setPaintProperty(id, 'text-halo-width', 1.4);
+        }
+      }
+    } catch {
+      // Some upstream style layers do not support every paint property.
+    }
+  }
+}
+
 function validBearing(value) {
   return Number(value) > 0 && Number(value) <= 360;
 }
@@ -588,13 +760,23 @@ function applyLanguage() {
   els.chips.querySelectorAll('.chip').forEach((button) => {
     button.textContent = t('categories')[button.dataset.key] || button.dataset.key;
   });
+  applyTrailButtonLabel();
   render();
   if (state.selected) showDetail(state.selected, false);
+}
+
+function applyTrailButtonLabel() {
+  if (state.trailsLoading) {
+    els.trailToggle.textContent = t('trailLoading');
+  } else {
+    els.trailToggle.textContent = state.trailsVisible ? t('trailToggleOn') : t('trailToggleOff');
+  }
 }
 
 buildChips();
 applyLanguage();
 els.refresh.addEventListener('click', loadAll);
+els.trailToggle.addEventListener('click', toggleTrails);
 els.langToggle.addEventListener('click', () => {
   state.lang = state.lang === 'ko' ? 'en' : 'ko';
   localStorage.setItem('dashboardLang', state.lang);
