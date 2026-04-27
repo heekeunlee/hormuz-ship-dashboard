@@ -480,6 +480,7 @@ footer {
 @media (max-width: 920px) {
   body {
     font-size: 13px;
+    overflow: hidden;
   }
 
   .map-shade {
@@ -492,15 +493,27 @@ footer {
     left: 14px;
     right: 14px;
     top: 14px;
+    align-items: center;
+  }
+
+  .eyebrow {
+    margin-bottom: 4px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
   }
 
   h1 {
-    max-width: 280px;
-    font-size: 30px;
+    max-width: 230px;
+    font-size: 24px;
+    line-height: 1.02;
   }
 
   .status {
+    width: 40px;
+    height: 40px;
     min-width: 44px;
+    justify-content: center;
+    padding: 0;
   }
 
   .status strong {
@@ -510,48 +523,125 @@ footer {
   .left-rail {
     left: 14px;
     right: 14px;
-    top: 104px;
+    top: 82px;
     bottom: auto;
     width: auto;
+    gap: 8px;
   }
 
   .overview {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .overview::-webkit-scrollbar {
+    display: none;
   }
 
   .metric {
-    min-height: 64px;
+    flex: 0 0 104px;
+    min-height: 58px;
     padding: 9px;
+    scroll-snap-align: start;
   }
 
   .metric span {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .metric strong {
-    font-size: 20px;
+    margin-top: 5px;
+    font-size: 18px;
+  }
+
+  .filters {
+    padding: 10px;
+  }
+
+  .panel-head {
+    margin-bottom: 8px;
+  }
+
+  .panel h2 {
+    margin-bottom: 0;
+    font-size: 11px;
+  }
+
+  #refresh {
+    min-height: 30px;
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+
+  input {
+    height: 36px;
+    font-size: 12px;
   }
 
   .chips {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    overflow-x: auto;
+    margin-top: 8px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
   }
 
   .chip {
+    flex: 0 0 auto;
     min-height: 32px;
-    padding: 7px 6px;
+    max-width: 104px;
+    padding: 7px 9px;
     font-size: 11px;
   }
 
   .list {
     left: 14px;
     right: 14px;
-    bottom: 42px;
+    bottom: max(14px, env(safe-area-inset-bottom));
     width: auto;
-    max-height: 130px;
+    max-height: 118px;
+    padding: 10px 12px;
+  }
+
+  .list h2 {
+    margin-bottom: 6px;
+  }
+
+  .list li {
+    padding: 7px 0;
+  }
+
+  .list span {
+    max-width: 112px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .detail {
-    bottom: 42px;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    max-height: 54vh;
+    overflow: auto;
+    padding: 16px;
+  }
+
+  .detail h2 {
+    font-size: 20px;
+  }
+
+  dl {
+    gap: 10px;
   }
 
   footer {
@@ -561,18 +651,66 @@ footer {
 
 @media (max-width: 520px) {
   .left-rail {
-    top: 98px;
+    top: 78px;
   }
 
-  .overview {
-    gap: 6px;
+  .metric {
+    flex-basis: 96px;
   }
 
   .metric strong {
-    font-size: 18px;
+    font-size: 17px;
   }
 
+  .filters {
+    padding: 9px;
+  }
+
+  input {
+    height: 34px;
+  }
+
+  .chip {
+    max-width: 96px;
+  }
+
+  .maplibregl-ctrl-bottom-right {
+    bottom: 144px;
+  }
+
+  .maplibregl-ctrl-bottom-left {
+    bottom: 144px;
+  }
+}
+
+@media (max-width: 380px), (max-height: 720px) {
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .filters .panel-head {
+    display: contents;
+  }
+
+  .filters h2,
   .chips {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: none;
+  }
+
+  #refresh {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .filters input {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .list {
+    max-height: 96px;
   }
 }
