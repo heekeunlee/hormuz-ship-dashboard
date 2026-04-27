@@ -160,6 +160,14 @@ const els = {
 
 const colors = Object.fromEntries(CATEGORIES.map(([key, color]) => [key, color]));
 const regionNames = {};
+const STRAIT_CHANNEL = [
+  [55.95, 26.28],
+  [56.12, 26.33],
+  [56.34, 26.43],
+  [56.58, 26.55],
+  [56.78, 26.62],
+  [56.95, 26.66],
+];
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -606,11 +614,10 @@ function trailFeatures(row) {
   if (ageMs > 48 * 60 * 60 * 1000 && !row.lastSeen) return [];
 
   const color = colors[row.category] || colors.unknown;
-  const segments = 12;
+  const curve = routeCurve(start, end);
+  const segments = curve.length - 1;
   const features = [];
   for (let i = 0; i < segments; i += 1) {
-    const a = i / segments;
-    const b = (i + 1) / segments;
     const alpha = (i + 1) / segments;
     features.push({
       type: 'Feature',
@@ -624,8 +631,8 @@ function trailFeatures(row) {
       geometry: {
         type: 'LineString',
         coordinates: [
-          interpolatePoint(start, end, a),
-          interpolatePoint(start, end, b),
+          curve[i],
+          curve[i + 1],
         ],
       },
     });
@@ -640,11 +647,57 @@ function pointFrom(lon, lat) {
   return [x, y];
 }
 
-function interpolatePoint(start, end, tValue) {
+function routeCurve(start, end) {
+  const steps = 36;
+  const controlA = mixPoint(start, channelPoint(start[0]), 0.78);
+  const controlB = mixPoint(end, channelPoint(end[0]), 0.78);
+  const distance = Math.hypot(end[0] - start[0], end[1] - start[1]);
+
+  if (distance < 0.08) {
+    const middle = channelPoint((start[0] + end[0]) / 2);
+    const loop = [middle[0], middle[1] + 0.08];
+    return Array.from({ length: steps + 1 }, (_, i) => {
+      const tValue = i / steps;
+      return quadraticBezier(start, loop, end, tValue);
+    });
+  }
+
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const tValue = i / steps;
+    return cubicBezier(start, controlA, controlB, end, tValue);
+  });
+}
+
+function channelPoint(lon) {
+  const clampedLon = Math.min(Math.max(Number(lon), STRAIT_CHANNEL[0][0]), STRAIT_CHANNEL[STRAIT_CHANNEL.length - 1][0]);
+  for (let i = 0; i < STRAIT_CHANNEL.length - 1; i += 1) {
+    const a = STRAIT_CHANNEL[i];
+    const b = STRAIT_CHANNEL[i + 1];
+    if (clampedLon >= a[0] && clampedLon <= b[0]) {
+      const tValue = (clampedLon - a[0]) / (b[0] - a[0] || 1);
+      return mixPoint(a, b, tValue);
+    }
+  }
+  return STRAIT_CHANNEL[STRAIT_CHANNEL.length - 1];
+}
+
+function mixPoint(a, b, tValue) {
   return [
-    start[0] + (end[0] - start[0]) * tValue,
-    start[1] + (end[1] - start[1]) * tValue,
+    a[0] + (b[0] - a[0]) * tValue,
+    a[1] + (b[1] - a[1]) * tValue,
   ];
+}
+
+function quadraticBezier(a, b, c, tValue) {
+  const p = mixPoint(a, b, tValue);
+  const q = mixPoint(b, c, tValue);
+  return mixPoint(p, q, tValue);
+}
+
+function cubicBezier(a, b, c, d, tValue) {
+  const p = quadraticBezier(a, b, c, tValue);
+  const q = quadraticBezier(b, c, d, tValue);
+  return mixPoint(p, q, tValue);
 }
 
 function enhanceMapContrast() {
