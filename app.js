@@ -1,14 +1,105 @@
 const API = 'https://hormuz.now/api';
 
 const CATEGORIES = [
-  ['tanker', '탱커', '#45df9f'],
-  ['cargo', '화물', '#60a5fa'],
-  ['tug', '예인/서비스', '#f6b44b'],
-  ['fishing', '어선', '#a78bfa'],
-  ['highspeed', '고속선', '#fb7185'],
-  ['navaid', '항로표지', '#facc15'],
-  ['unknown', '미상', '#cbd5e1'],
+  ['tanker', '#45df9f'],
+  ['cargo', '#60a5fa'],
+  ['tug', '#f6b44b'],
+  ['fishing', '#a78bfa'],
+  ['highspeed', '#fb7185'],
+  ['navaid', '#facc15'],
+  ['unknown', '#cbd5e1'],
 ];
+
+const I18N = {
+  ko: {
+    eyebrow: 'Live AIS · 호르무즈 해협',
+    metricTotal: '전체 선박',
+    metricChoke: '해협 내부',
+    metricTankers: '탱커',
+    metricCargo: '화물선',
+    metricSpeed: '평균 속도',
+    metricUpdated: '마지막 갱신',
+    filters: '필터',
+    refresh: '새로고침',
+    searchPlaceholder: '선박명, 목적지, 국가 검색',
+    traffic: '통항 방향',
+    eastbound: '동향 · 걸프 진입',
+    westbound: '서향 · 걸프 이탈',
+    otherTraffic: '정박/횡단/기타',
+    notableVessels: '대형 선박',
+    country: '국가',
+    speed: '속도',
+    course: '방위',
+    destination: '목적지',
+    size: '크기',
+    lastSeen: '최근 수신',
+    close: '닫기',
+    disclaimer: 'AIS 데이터는 지연, 누락, 스푸핑 가능성이 있습니다. 항해나 안전 판단용이 아닌 상황 인식용입니다.',
+    connecting: '연결 중',
+    loading: '불러오는 중',
+    ships: '척',
+    apiError: 'API 오류',
+    unknown: '미상',
+    unnamed: '[이름 없음]',
+    noDestination: '-',
+    secondsAgo: (n) => `${n}초 전`,
+    minutesAgo: (n) => `${n}분 전`,
+    hoursAgo: (n) => `${n}시간 전`,
+    categories: {
+      tanker: '탱커',
+      cargo: '화물',
+      tug: '예인/서비스',
+      fishing: '어선',
+      highspeed: '고속선',
+      navaid: '항로표지',
+      unknown: '미상',
+    },
+  },
+  en: {
+    eyebrow: 'Live AIS · Strait of Hormuz',
+    metricTotal: 'Total vessels',
+    metricChoke: 'In chokepoint',
+    metricTankers: 'Tankers',
+    metricCargo: 'Cargo ships',
+    metricSpeed: 'Avg speed',
+    metricUpdated: 'Last update',
+    filters: 'Filters',
+    refresh: 'Refresh',
+    searchPlaceholder: 'Search vessel, destination, or country',
+    traffic: 'Traffic Direction',
+    eastbound: 'Eastbound · into Gulf',
+    westbound: 'Westbound · out of Gulf',
+    otherTraffic: 'Anchored / cross / other',
+    notableVessels: 'Large Vessels',
+    country: 'Country',
+    speed: 'Speed',
+    course: 'Course',
+    destination: 'Destination',
+    size: 'Size',
+    lastSeen: 'Last seen',
+    close: 'Close',
+    disclaimer: 'AIS data can be delayed, incomplete, or spoofed. Use for situational awareness only, not navigation or safety decisions.',
+    connecting: 'Connecting',
+    loading: 'Loading',
+    ships: 'ships',
+    apiError: 'API error',
+    unknown: 'Unknown',
+    unnamed: '[Unnamed]',
+    noDestination: '-',
+    secondsAgo: (n) => `${n}s ago`,
+    minutesAgo: (n) => `${n}m ago`,
+    hoursAgo: (n) => `${n}h ago`,
+    categories: {
+      tanker: 'Tankers',
+      cargo: 'Cargo',
+      tug: 'Tug / service',
+      fishing: 'Fishing',
+      highspeed: 'High-speed',
+      navaid: 'Nav. aid',
+      unknown: 'Unknown',
+    },
+  },
+};
 
 const state = {
   snapshot: null,
@@ -16,12 +107,16 @@ const state = {
   selected: null,
   enabled: new Set(CATEGORIES.map(([key]) => key)),
   query: '',
+  lang: localStorage.getItem('dashboardLang') === 'en' ? 'en' : 'ko',
+  statusKind: '',
+  statusKey: 'connecting',
 };
 
 const $ = (id) => document.getElementById(id);
 
 const els = {
   status: $('status'),
+  langToggle: $('langToggle'),
   total: $('total'),
   choke: $('choke'),
   tankers: $('tankers'),
@@ -50,10 +145,8 @@ const els = {
   detailAge: $('detailAge'),
 };
 
-const colors = Object.fromEntries(CATEGORIES.map(([key, , color]) => [key, color]));
-const regionNames = typeof Intl !== 'undefined' && Intl.DisplayNames
-  ? new Intl.DisplayNames(['ko'], { type: 'region' })
-  : null;
+const colors = Object.fromEntries(CATEGORIES.map(([key, color]) => [key, color]));
+const regionNames = {};
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -84,18 +177,19 @@ map.on('load', async () => {
 });
 
 function setStatus(kind, text) {
+  state.statusKind = kind;
+  state.statusKey = text;
   els.status.className = `status ${kind}`;
-  els.status.querySelector('strong').textContent = text;
+  els.status.querySelector('strong').textContent = statusText(text);
 }
 
 function buildChips() {
   els.chips.innerHTML = '';
-  CATEGORIES.forEach(([key, label, color]) => {
+  CATEGORIES.forEach(([key, color]) => {
     const button = document.createElement('button');
     button.className = 'chip';
     button.type = 'button';
     button.dataset.key = key;
-    button.textContent = label;
     button.style.borderColor = `${color}88`;
     button.addEventListener('click', () => {
       if (state.enabled.has(key)) state.enabled.delete(key);
@@ -108,7 +202,7 @@ function buildChips() {
 }
 
 async function loadAll() {
-  setStatus('', 'Loading');
+  setStatus('', 'loading');
   try {
     const [region, snapshot] = await Promise.all([
       fetchJson(`${API}/region`),
@@ -118,10 +212,10 @@ async function loadAll() {
     state.snapshot = snapshot;
     renderRegion();
     render();
-    setStatus('live', `${snapshot.count.toLocaleString()} ships`);
+    setStatus('live', 'liveCount');
   } catch (error) {
     console.error(error);
-    setStatus('error', 'API error');
+    setStatus('error', 'apiError');
   }
 }
 
@@ -311,11 +405,11 @@ function render() {
       type: 'Feature',
       properties: {
         id: v.id,
-        name: v.name || '[Unnamed]',
+        name: v.name || t('unnamed'),
         color: colors[v.category] || colors.unknown,
         flag: v.flag || '',
         country: countryName(v.flag),
-        type: v.shiptypeLabel || v.category || 'Unknown',
+        type: vesselTypeLabel(v),
         speed: Number(v.speed || 0).toFixed(1),
         bearing: validBearing(v.heading) ? v.heading : (v.course || 0),
         moving: Number(v.speed) > 0.5,
@@ -333,7 +427,7 @@ function filteredShips() {
   return state.snapshot.vessels.filter((v) => {
     if (!state.enabled.has(v.category || 'unknown')) return false;
     if (!q) return true;
-    return [v.name, v.destination, v.flag, v.shiptypeLabel, v.gtLabel]
+    return [v.name, v.destination, v.flag, countryName(v.flag), v.shiptypeLabel, v.gtLabel]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(q));
   });
@@ -369,7 +463,7 @@ function renderList(ships) {
   els.vesselList.innerHTML = '';
   notable.forEach((v) => {
     const li = document.createElement('li');
-    li.innerHTML = `<b>${escapeHtml(v.name || '[Unnamed]')}</b><span>${escapeHtml(v.shiptypeLabel || v.category)} · ${Number(v.speed || 0).toFixed(1)} kn</span>`;
+    li.innerHTML = `<b>${escapeHtml(v.name || t('unnamed'))}</b><span>${escapeHtml(vesselTypeLabel(v))} · ${Number(v.speed || 0).toFixed(1)} kn</span>`;
     li.addEventListener('click', () => showDetail(v.id, true));
     els.vesselList.appendChild(li);
   });
@@ -380,14 +474,14 @@ function showDetail(id, fly) {
   if (!v) return;
   state.selected = id;
   els.detail.classList.remove('hidden');
-  els.detailType.textContent = `${v.shiptypeLabel || v.category || 'Unknown'} · ${flagEmoji(v.flag)} ${countryName(v.flag)}`;
-  els.detailName.textContent = v.name || '[Unnamed]';
+  els.detailType.textContent = `${vesselTypeLabel(v)} · ${flagEmoji(v.flag)} ${countryName(v.flag)}`;
+  els.detailName.textContent = v.name || t('unnamed');
   els.detailFlag.textContent = `${flagEmoji(v.flag)} ${countryName(v.flag)}`;
   els.detailSpeed.textContent = `${Number(v.speed || 0).toFixed(1)} kn`;
   els.detailCourse.textContent = `${Math.round(v.course || v.heading || 0)} deg`;
-  els.detailDest.textContent = v.destination || '-';
+  els.detailDest.textContent = v.destination || t('noDestination');
   els.detailSize.textContent = v.length ? `${Math.round(v.length)} x ${Math.round(v.width || 0)} m` : '-';
-  els.detailAge.textContent = v.elapsedMin >= 0 ? `${Math.round(v.elapsedMin)} min ago` : '-';
+  els.detailAge.textContent = v.elapsedMin >= 0 ? t('minutesAgo')(Math.round(v.elapsedMin)) : '-';
   if (fly) map.flyTo({ center: [v.lon, v.lat], zoom: Math.max(9.4, map.getZoom()), duration: 700 });
 }
 
@@ -402,8 +496,8 @@ function showShipPopup(event) {
         <span class="ship-pop-flag">${flagEmoji(flag)}</span>
         <strong>${escapeHtml(props.country || countryName(flag))}</strong>
       </div>
-      <div class="ship-pop-name">${escapeHtml(props.name || '[Unnamed]')}</div>
-      <div class="ship-pop-meta">${escapeHtml(props.type || 'Unknown')} · ${escapeHtml(props.speed || '0.0')} kn</div>
+      <div class="ship-pop-name">${escapeHtml(props.name || t('unnamed'))}</div>
+      <div class="ship-pop-meta">${escapeHtml(props.type || t('unknown'))} · ${escapeHtml(props.speed || '0.0')} kn</div>
     </div>
   `;
   shipPopup
@@ -422,10 +516,10 @@ function fmt(value) {
 
 function age(timestamp) {
   const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 60) return t('secondsAgo')(seconds);
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.round(minutes / 60)}h ago`;
+  if (minutes < 60) return t('minutesAgo')(minutes);
+  return t('hoursAgo')(Math.round(minutes / 60));
 }
 
 function flagEmoji(code) {
@@ -438,8 +532,10 @@ function flagEmoji(code) {
 
 function countryName(code) {
   const cc = normalizeCountryCode(code);
-  if (!cc) return 'Unknown';
-  return regionNames?.of(cc) || cc;
+  if (!cc) return t('unknown');
+  if (typeof Intl === 'undefined' || !Intl.DisplayNames) return cc;
+  regionNames[state.lang] ||= new Intl.DisplayNames([state.lang], { type: 'region' });
+  return regionNames[state.lang]?.of(cc) || cc;
 }
 
 function normalizeCountryCode(code) {
@@ -457,8 +553,54 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function t(key) {
+  return I18N[state.lang][key];
+}
+
+function statusText(key) {
+  if (key === 'liveCount') return `${fmt(state.snapshot?.count || 0)} ${t('ships')}`;
+  if (key === 'loading') return t('loading');
+  if (key === 'apiError') return t('apiError');
+  if (key === 'connecting') return t('connecting');
+  return key;
+}
+
+function vesselTypeLabel(v) {
+  return t('categories')[v.category] || v.shiptypeLabel || v.category || t('unknown');
+}
+
+function applyLanguage() {
+  document.documentElement.lang = state.lang;
+  document.querySelectorAll('[data-i18n]').forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
+    node.placeholder = t(node.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-aria]').forEach((node) => {
+    node.setAttribute('aria-label', t(node.dataset.i18nAria));
+  });
+  document.querySelectorAll('[data-lang-option]').forEach((node) => {
+    node.dataset.active = node.dataset.langOption === state.lang ? 'true' : 'false';
+  });
+  els.langToggle.setAttribute('aria-pressed', state.lang === 'en' ? 'true' : 'false');
+  els.status.querySelector('strong').textContent = statusText(state.statusKey);
+  els.chips.querySelectorAll('.chip').forEach((button) => {
+    button.textContent = t('categories')[button.dataset.key] || button.dataset.key;
+  });
+  render();
+  if (state.selected) showDetail(state.selected, false);
+}
+
 buildChips();
+applyLanguage();
 els.refresh.addEventListener('click', loadAll);
+els.langToggle.addEventListener('click', () => {
+  state.lang = state.lang === 'ko' ? 'en' : 'ko';
+  localStorage.setItem('dashboardLang', state.lang);
+  shipPopup.remove();
+  applyLanguage();
+});
 els.search.addEventListener('input', (event) => {
   state.query = event.target.value.trim();
   render();

@@ -17,90 +17,96 @@
       <div class="map-shade"></div>
       <header class="topbar">
         <div>
-          <p class="eyebrow">Live AIS · Strait of Hormuz</p>
+          <p class="eyebrow" data-i18n="eyebrow">Live AIS · 호르무즈 해협</p>
           <h1>Hormuz Ship Dashboard</h1>
         </div>
-        <div class="status" id="status">
-          <span></span>
-          <strong>Connecting</strong>
+        <div class="top-actions">
+          <button class="lang-toggle" id="langToggle" type="button" aria-label="Switch language">
+            <span data-lang-option="ko">한</span>
+            <span data-lang-option="en">EN</span>
+          </button>
+          <div class="status" id="status">
+            <span></span>
+            <strong>연결 중</strong>
+          </div>
         </div>
       </header>
 
       <aside class="left-rail">
         <section class="overview" aria-label="선박 통계">
           <div class="metric accent">
-            <span>전체 선박</span>
+            <span data-i18n="metricTotal">전체 선박</span>
             <strong id="total">-</strong>
           </div>
           <div class="metric">
-            <span>해협 내부</span>
+            <span data-i18n="metricChoke">해협 내부</span>
             <strong id="choke">-</strong>
           </div>
           <div class="metric">
-            <span>탱커</span>
+            <span data-i18n="metricTankers">탱커</span>
             <strong id="tankers">-</strong>
           </div>
           <div class="metric">
-            <span>화물선</span>
+            <span data-i18n="metricCargo">화물선</span>
             <strong id="cargo">-</strong>
           </div>
           <div class="metric">
-            <span>평균 속도</span>
+            <span data-i18n="metricSpeed">평균 속도</span>
             <strong id="speed">-</strong>
           </div>
           <div class="metric">
-            <span>마지막 갱신</span>
+            <span data-i18n="metricUpdated">마지막 갱신</span>
             <strong id="updated">-</strong>
           </div>
         </section>
 
         <section class="panel filters">
           <div class="panel-head">
-            <h2>필터</h2>
-            <button id="refresh" type="button">새로고침</button>
+            <h2 data-i18n="filters">필터</h2>
+            <button id="refresh" type="button" data-i18n="refresh">새로고침</button>
           </div>
-          <input id="search" type="search" placeholder="선박명, 목적지, 국가 검색">
+          <input id="search" type="search" placeholder="선박명, 목적지, 국가 검색" data-i18n-placeholder="searchPlaceholder">
           <div class="chips" id="chips"></div>
         </section>
       </aside>
 
       <section class="panel traffic">
-        <h2>통항 방향</h2>
+        <h2 data-i18n="traffic">통항 방향</h2>
         <div class="barline">
-          <span>동향 · 걸프 진입</span><b id="eastText">-</b>
+          <span data-i18n="eastbound">동향 · 걸프 진입</span><b id="eastText">-</b>
           <div><i id="eastBar"></i></div>
         </div>
         <div class="barline">
-          <span>서향 · 걸프 이탈</span><b id="westText">-</b>
+          <span data-i18n="westbound">서향 · 걸프 이탈</span><b id="westText">-</b>
           <div><i id="westBar"></i></div>
         </div>
         <div class="barline">
-          <span>정박/횡단/기타</span><b id="crossText">-</b>
+          <span data-i18n="otherTraffic">정박/횡단/기타</span><b id="crossText">-</b>
           <div><i id="crossBar"></i></div>
         </div>
       </section>
 
       <section class="panel list">
-        <h2>대형 선박</h2>
+        <h2 data-i18n="notableVessels">대형 선박</h2>
         <ol id="vesselList"></ol>
       </section>
 
       <section class="detail hidden" id="detail">
-        <button id="closeDetail" type="button" aria-label="닫기">×</button>
+        <button id="closeDetail" type="button" aria-label="닫기" data-i18n-aria="close">×</button>
         <p id="detailType">-</p>
         <h2 id="detailName">-</h2>
         <dl>
-          <div><dt>국가</dt><dd id="detailFlag">-</dd></div>
-          <div><dt>속도</dt><dd id="detailSpeed">-</dd></div>
-          <div><dt>방위</dt><dd id="detailCourse">-</dd></div>
-          <div><dt>목적지</dt><dd id="detailDest">-</dd></div>
-          <div><dt>크기</dt><dd id="detailSize">-</dd></div>
-          <div><dt>최근 수신</dt><dd id="detailAge">-</dd></div>
+          <div><dt data-i18n="country">국가</dt><dd id="detailFlag">-</dd></div>
+          <div><dt data-i18n="speed">속도</dt><dd id="detailSpeed">-</dd></div>
+          <div><dt data-i18n="course">방위</dt><dd id="detailCourse">-</dd></div>
+          <div><dt data-i18n="destination">목적지</dt><dd id="detailDest">-</dd></div>
+          <div><dt data-i18n="size">크기</dt><dd id="detailSize">-</dd></div>
+          <div><dt data-i18n="lastSeen">최근 수신</dt><dd id="detailAge">-</dd></div>
         </dl>
       </section>
 
       <footer>
-        AIS data from public endpoints used by hormuz.now. AIS can be delayed, incomplete, or spoofed.
+        <span data-i18n="disclaimer">AIS 데이터는 지연, 누락, 스푸핑 가능성이 있습니다. 항해나 안전 판단용이 아닌 상황 인식용입니다.</span>
       </footer>
     </section>
   </main>
