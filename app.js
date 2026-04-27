@@ -51,15 +51,25 @@ const els = {
 };
 
 const colors = Object.fromEntries(CATEGORIES.map(([key, , color]) => [key, color]));
+const regionNames = typeof Intl !== 'undefined' && Intl.DisplayNames
+  ? new Intl.DisplayNames(['ko'], { type: 'region' })
+  : null;
 
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/dark',
+  style: 'https://tiles.openfreemap.org/styles/bright',
   center: [56.25, 26.55],
   zoom: 7.35,
   minZoom: 5,
   maxZoom: 13,
   attributionControl: false,
+});
+
+const shipPopup = new maplibregl.Popup({
+  closeButton: false,
+  closeOnClick: false,
+  offset: 14,
+  className: 'ship-hover-popup',
 });
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
@@ -217,7 +227,11 @@ function addLayers() {
     if (id) showDetail(id, true);
   });
   map.on('mouseenter', 'ships', () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', 'ships', () => { map.getCanvas().style.cursor = ''; });
+  map.on('mousemove', 'ships', showShipPopup);
+  map.on('mouseleave', 'ships', () => {
+    map.getCanvas().style.cursor = '';
+    shipPopup.remove();
+  });
 }
 
 async function addShipImages() {
@@ -299,6 +313,10 @@ function render() {
         id: v.id,
         name: v.name || '[Unnamed]',
         color: colors[v.category] || colors.unknown,
+        flag: v.flag || '',
+        country: countryName(v.flag),
+        type: v.shiptypeLabel || v.category || 'Unknown',
+        speed: Number(v.speed || 0).toFixed(1),
         bearing: validBearing(v.heading) ? v.heading : (v.course || 0),
         moving: Number(v.speed) > 0.5,
         length: Number(v.length) || 0,
@@ -362,15 +380,36 @@ function showDetail(id, fly) {
   if (!v) return;
   state.selected = id;
   els.detail.classList.remove('hidden');
-  els.detailType.textContent = `${v.shiptypeLabel || v.category || 'Unknown'} · ${v.flag || '--'}`;
+  els.detailType.textContent = `${v.shiptypeLabel || v.category || 'Unknown'} · ${flagEmoji(v.flag)} ${countryName(v.flag)}`;
   els.detailName.textContent = v.name || '[Unnamed]';
-  els.detailFlag.textContent = v.flag || '-';
+  els.detailFlag.textContent = `${flagEmoji(v.flag)} ${countryName(v.flag)}`;
   els.detailSpeed.textContent = `${Number(v.speed || 0).toFixed(1)} kn`;
   els.detailCourse.textContent = `${Math.round(v.course || v.heading || 0)} deg`;
   els.detailDest.textContent = v.destination || '-';
   els.detailSize.textContent = v.length ? `${Math.round(v.length)} x ${Math.round(v.width || 0)} m` : '-';
   els.detailAge.textContent = v.elapsedMin >= 0 ? `${Math.round(v.elapsedMin)} min ago` : '-';
   if (fly) map.flyTo({ center: [v.lon, v.lat], zoom: Math.max(9.4, map.getZoom()), duration: 700 });
+}
+
+function showShipPopup(event) {
+  const feature = event.features?.[0];
+  if (!feature) return;
+  const props = feature.properties;
+  const flag = props.flag || '';
+  const html = `
+    <div class="ship-pop">
+      <div class="ship-pop-country">
+        <span class="ship-pop-flag">${flagEmoji(flag)}</span>
+        <strong>${escapeHtml(props.country || countryName(flag))}</strong>
+      </div>
+      <div class="ship-pop-name">${escapeHtml(props.name || '[Unnamed]')}</div>
+      <div class="ship-pop-meta">${escapeHtml(props.type || 'Unknown')} · ${escapeHtml(props.speed || '0.0')} kn</div>
+    </div>
+  `;
+  shipPopup
+    .setLngLat(event.lngLat)
+    .setHTML(html)
+    .addTo(map);
 }
 
 function validBearing(value) {
@@ -387,6 +426,25 @@ function age(timestamp) {
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
   return `${Math.round(minutes / 60)}h ago`;
+}
+
+function flagEmoji(code) {
+  const cc = normalizeCountryCode(code);
+  if (!cc) return '🏳';
+  const base = 0x1F1E6;
+  return String.fromCodePoint(base + cc.charCodeAt(0) - 65) +
+    String.fromCodePoint(base + cc.charCodeAt(1) - 65);
+}
+
+function countryName(code) {
+  const cc = normalizeCountryCode(code);
+  if (!cc) return 'Unknown';
+  return regionNames?.of(cc) || cc;
+}
+
+function normalizeCountryCode(code) {
+  const cc = String(code || '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(cc) ? cc : '';
 }
 
 function escapeHtml(value) {

@@ -26,41 +26,43 @@
         </div>
       </header>
 
-      <aside class="overview">
-        <div class="metric accent">
-          <span>전체 선박</span>
-          <strong id="total">-</strong>
-        </div>
-        <div class="metric">
-          <span>해협 내부</span>
-          <strong id="choke">-</strong>
-        </div>
-        <div class="metric">
-          <span>탱커</span>
-          <strong id="tankers">-</strong>
-        </div>
-        <div class="metric">
-          <span>화물선</span>
-          <strong id="cargo">-</strong>
-        </div>
-        <div class="metric">
-          <span>평균 속도</span>
-          <strong id="speed">-</strong>
-        </div>
-        <div class="metric">
-          <span>마지막 갱신</span>
-          <strong id="updated">-</strong>
-        </div>
-      </aside>
+      <aside class="left-rail">
+        <section class="overview" aria-label="선박 통계">
+          <div class="metric accent">
+            <span>전체 선박</span>
+            <strong id="total">-</strong>
+          </div>
+          <div class="metric">
+            <span>해협 내부</span>
+            <strong id="choke">-</strong>
+          </div>
+          <div class="metric">
+            <span>탱커</span>
+            <strong id="tankers">-</strong>
+          </div>
+          <div class="metric">
+            <span>화물선</span>
+            <strong id="cargo">-</strong>
+          </div>
+          <div class="metric">
+            <span>평균 속도</span>
+            <strong id="speed">-</strong>
+          </div>
+          <div class="metric">
+            <span>마지막 갱신</span>
+            <strong id="updated">-</strong>
+          </div>
+        </section>
 
-      <section class="panel filters">
-        <div class="panel-head">
-          <h2>필터</h2>
-          <button id="refresh" type="button">새로고침</button>
-        </div>
-        <input id="search" type="search" placeholder="선박명, 목적지, 국가 검색">
-        <div class="chips" id="chips"></div>
-      </section>
+        <section class="panel filters">
+          <div class="panel-head">
+            <h2>필터</h2>
+            <button id="refresh" type="button">새로고침</button>
+          </div>
+          <input id="search" type="search" placeholder="선박명, 목적지, 국가 검색">
+          <div class="chips" id="chips"></div>
+        </section>
+      </aside>
 
       <section class="panel traffic">
         <h2>통항 방향</h2>
