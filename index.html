@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hormuz Ship Dashboard</title>
+  <meta name="description" content="Live AIS dashboard for ships around the Strait of Hormuz.">
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="preconnect" href="https://tiles.openfreemap.org">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="map-wrap">
+      <div id="map"></div>
+      <div class="map-shade"></div>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Live AIS · Strait of Hormuz</p>
+          <h1>Hormuz Ship Dashboard</h1>
+        </div>
+        <div class="status" id="status">
+          <span></span>
+          <strong>Connecting</strong>
+        </div>
+      </header>
+
+      <aside class="overview">
+        <div class="metric accent">
+          <span>전체 선박</span>
+          <strong id="total">-</strong>
+        </div>
+        <div class="metric">
+          <span>해협 내부</span>
+          <strong id="choke">-</strong>
+        </div>
+        <div class="metric">
+          <span>탱커</span>
+          <strong id="tankers">-</strong>
+        </div>
+        <div class="metric">
+          <span>화물선</span>
+          <strong id="cargo">-</strong>
+        </div>
+        <div class="metric">
+          <span>평균 속도</span>
+          <strong id="speed">-</strong>
+        </div>
+        <div class="metric">
+          <span>마지막 갱신</span>
+          <strong id="updated">-</strong>
+        </div>
+      </aside>
+
+      <section class="panel filters">
+        <div class="panel-head">
+          <h2>필터</h2>
+          <button id="refresh" type="button">새로고침</button>
+        </div>
+        <input id="search" type="search" placeholder="선박명, 목적지, 국가 검색">
+        <div class="chips" id="chips"></div>
+      </section>
+
+      <section class="panel traffic">
+        <h2>통항 방향</h2>
+        <div class="barline">
+          <span>동향 · 걸프 진입</span><b id="eastText">-</b>
+          <div><i id="eastBar"></i></div>
+        </div>
+        <div class="barline">
+          <span>서향 · 걸프 이탈</span><b id="westText">-</b>
+          <div><i id="westBar"></i></div>
+        </div>
+        <div class="barline">
+          <span>정박/횡단/기타</span><b id="crossText">-</b>
+          <div><i id="crossBar"></i></div>
+        </div>
+      </section>
+
+      <section class="panel list">
+        <h2>대형 선박</h2>
+        <ol id="vesselList"></ol>
+      </section>
+
+      <section class="detail hidden" id="detail">
+        <button id="closeDetail" type="button" aria-label="닫기">×</button>
+        <p id="detailType">-</p>
+        <h2 id="detailName">-</h2>
+        <dl>
+          <div><dt>국가</dt><dd id="detailFlag">-</dd></div>
+          <div><dt>속도</dt><dd id="detailSpeed">-</dd></div>
+          <div><dt>방위</dt><dd id="detailCourse">-</dd></div>
+          <div><dt>목적지</dt><dd id="detailDest">-</dd></div>
+          <div><dt>크기</dt><dd id="detailSize">-</dd></div>
+          <div><dt>최근 수신</dt><dd id="detailAge">-</dd></div>
+        </dl>
+      </section>
+
+      <footer>
+        AIS data from public endpoints used by hormuz.now. AIS can be delayed, incomplete, or spoofed.
+      </footer>
+    </section>
+  </main>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

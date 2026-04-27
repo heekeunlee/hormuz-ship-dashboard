@@ -1,0 +1,411 @@
+const API = 'https://hormuz.now/api';
+
+const CATEGORIES = [
+  ['tanker', '탱커', '#45df9f'],
+  ['cargo', '화물', '#60a5fa'],
+  ['tug', '예인/서비스', '#f6b44b'],
+  ['fishing', '어선', '#a78bfa'],
+  ['highspeed', '고속선', '#fb7185'],
+  ['navaid', '항로표지', '#facc15'],
+  ['unknown', '미상', '#cbd5e1'],
+];
+
+const state = {
+  snapshot: null,
+  region: null,
+  selected: null,
+  enabled: new Set(CATEGORIES.map(([key]) => key)),
+  query: '',
+};
+
+const $ = (id) => document.getElementById(id);
+
+const els = {
+  status: $('status'),
+  total: $('total'),
+  choke: $('choke'),
+  tankers: $('tankers'),
+  cargo: $('cargo'),
+  speed: $('speed'),
+  updated: $('updated'),
+  chips: $('chips'),
+  search: $('search'),
+  refresh: $('refresh'),
+  eastText: $('eastText'),
+  westText: $('westText'),
+  crossText: $('crossText'),
+  eastBar: $('eastBar'),
+  westBar: $('westBar'),
+  crossBar: $('crossBar'),
+  vesselList: $('vesselList'),
+  detail: $('detail'),
+  closeDetail: $('closeDetail'),
+  detailType: $('detailType'),
+  detailName: $('detailName'),
+  detailFlag: $('detailFlag'),
+  detailSpeed: $('detailSpeed'),
+  detailCourse: $('detailCourse'),
+  detailDest: $('detailDest'),
+  detailSize: $('detailSize'),
+  detailAge: $('detailAge'),
+};
+
+const colors = Object.fromEntries(CATEGORIES.map(([key, , color]) => [key, color]));
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/dark',
+  center: [56.25, 26.55],
+  zoom: 7.35,
+  minZoom: 5,
+  maxZoom: 13,
+  attributionControl: false,
+});
+
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
+map.addControl(new maplibregl.ScaleControl({ unit: 'nautical' }), 'bottom-left');
+map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+
+map.on('load', async () => {
+  await addShipImages();
+  addSources();
+  addLayers();
+  loadAll();
+});
+
+function setStatus(kind, text) {
+  els.status.className = `status ${kind}`;
+  els.status.querySelector('strong').textContent = text;
+}
+
+function buildChips() {
+  els.chips.innerHTML = '';
+  CATEGORIES.forEach(([key, label, color]) => {
+    const button = document.createElement('button');
+    button.className = 'chip';
+    button.type = 'button';
+    button.dataset.key = key;
+    button.textContent = label;
+    button.style.borderColor = `${color}88`;
+    button.addEventListener('click', () => {
+      if (state.enabled.has(key)) state.enabled.delete(key);
+      else state.enabled.add(key);
+      button.classList.toggle('off', !state.enabled.has(key));
+      render();
+    });
+    els.chips.appendChild(button);
+  });
+}
+
+async function loadAll() {
+  setStatus('', 'Loading');
+  try {
+    const [region, snapshot] = await Promise.all([
+      fetchJson(`${API}/region`),
+      fetchJson(`${API}/snapshot`),
+    ]);
+    state.region = region;
+    state.snapshot = snapshot;
+    renderRegion();
+    render();
+    setStatus('live', `${snapshot.count.toLocaleString()} ships`);
+  } catch (error) {
+    console.error(error);
+    setStatus('error', 'API error');
+  }
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`${response.status} ${url}`);
+  return response.json();
+}
+
+function addSources() {
+  map.addSource('ships', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  map.addSource('choke', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  map.addSource('lanes', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+}
+
+function addLayers() {
+  map.addLayer({
+    id: 'choke-fill',
+    type: 'fill',
+    source: 'choke',
+    paint: { 'fill-color': '#f6b44b', 'fill-opacity': 0.12 },
+  });
+  map.addLayer({
+    id: 'choke-line',
+    type: 'line',
+    source: 'choke',
+    paint: {
+      'line-color': '#f6b44b',
+      'line-width': 2.5,
+      'line-dasharray': [3, 2],
+    },
+  });
+  map.addLayer({
+    id: 'lane-line',
+    type: 'line',
+    source: 'lanes',
+    paint: {
+      'line-color': ['match', ['get', 'dir'], 'inbound', '#22d3ee', '#f6b44b'],
+      'line-width': 2,
+      'line-opacity': 0.7,
+    },
+  });
+  map.addLayer({
+    id: 'ship-glow',
+    type: 'circle',
+    source: 'ships',
+    paint: {
+      'circle-color': ['get', 'color'],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 3, 9, 9, 12, 16],
+      'circle-opacity': 0.18,
+      'circle-blur': 0.9,
+    },
+  });
+  map.addLayer({
+    id: 'ships',
+    type: 'symbol',
+    source: 'ships',
+    layout: {
+      'icon-image': ['case', ['get', 'moving'], 'ship-arrow', 'ship-dot'],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.36, 9, 0.68, 12, 1.05],
+      'icon-rotate': ['get', 'bearing'],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: {
+      'icon-color': ['get', 'color'],
+      'icon-halo-color': '#020617',
+      'icon-halo-width': 0.6,
+    },
+  });
+  map.addLayer({
+    id: 'ship-labels',
+    type: 'symbol',
+    source: 'ships',
+    minzoom: 9.2,
+    filter: ['>=', ['get', 'length'], 180],
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-size': 10,
+      'text-offset': [0, 1.35],
+      'text-anchor': 'top',
+      'text-optional': true,
+    },
+    paint: {
+      'text-color': '#f8fafc',
+      'text-halo-color': '#020617',
+      'text-halo-width': 1.5,
+    },
+  });
+
+  map.on('click', 'ships', (event) => {
+    const id = event.features?.[0]?.properties?.id;
+    if (id) showDetail(id, true);
+  });
+  map.on('mouseenter', 'ships', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'ships', () => { map.getCanvas().style.cursor = ''; });
+}
+
+async function addShipImages() {
+  const arrow = await makeIcon((ctx, size) => {
+    ctx.translate(size / 2, size / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, -23);
+    ctx.lineTo(13, 15);
+    ctx.lineTo(0, 7);
+    ctx.lineTo(-13, 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }, 64);
+  const dot = await makeIcon((ctx) => {
+    ctx.beginPath();
+    ctx.arc(16, 16, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }, 32);
+  map.addImage('ship-arrow', arrow, { sdf: true, pixelRatio: 2 });
+  map.addImage('ship-dot', dot, { sdf: true, pixelRatio: 2 });
+}
+
+async function makeIcon(draw, size) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(0,0,0,0.62)';
+  ctx.lineWidth = 1.5;
+  draw(ctx, size);
+  return createImageBitmap(canvas);
+}
+
+function renderRegion() {
+  if (!state.region) return;
+  const box = state.region.chokePoint;
+  map.getSource('choke').setData({
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        [box.west, box.south],
+        [box.east, box.south],
+        [box.east, box.north],
+        [box.west, box.north],
+        [box.west, box.south],
+      ]],
+    },
+  });
+  map.getSource('lanes').setData({
+    type: 'FeatureCollection',
+    features: [
+      laneFeature('inbound', state.region.lanes.inbound),
+      laneFeature('outbound', state.region.lanes.outbound),
+    ],
+  });
+}
+
+function laneFeature(dir, points) {
+  return {
+    type: 'Feature',
+    properties: { dir },
+    geometry: { type: 'LineString', coordinates: points.map((p) => [p.lon, p.lat]) },
+  };
+}
+
+function render() {
+  if (!state.snapshot || !map.getSource('ships')) return;
+  const ships = filteredShips();
+  map.getSource('ships').setData({
+    type: 'FeatureCollection',
+    features: ships.map((v) => ({
+      type: 'Feature',
+      properties: {
+        id: v.id,
+        name: v.name || '[Unnamed]',
+        color: colors[v.category] || colors.unknown,
+        bearing: validBearing(v.heading) ? v.heading : (v.course || 0),
+        moving: Number(v.speed) > 0.5,
+        length: Number(v.length) || 0,
+      },
+      geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
+    })),
+  });
+  renderStats();
+  renderList(ships);
+}
+
+function filteredShips() {
+  const q = state.query.toLowerCase();
+  return state.snapshot.vessels.filter((v) => {
+    if (!state.enabled.has(v.category || 'unknown')) return false;
+    if (!q) return true;
+    return [v.name, v.destination, v.flag, v.shiptypeLabel, v.gtLabel]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(q));
+  });
+}
+
+function renderStats() {
+  const { snapshot } = state;
+  const stats = snapshot.stats || {};
+  els.total.textContent = fmt(snapshot.count);
+  els.choke.textContent = fmt(stats.inChokePoint);
+  els.tankers.textContent = fmt(stats.tankers);
+  els.cargo.textContent = fmt(stats.cargo);
+  els.speed.textContent = `${Number(stats.avgSpeed || 0).toFixed(1)} kn`;
+  els.updated.textContent = age(snapshot.generatedAt || snapshot.fetchedAt);
+
+  const east = stats.eastbound || 0;
+  const west = stats.westbound || 0;
+  const cross = stats.northSouth || 0;
+  const total = Math.max(1, east + west + cross);
+  els.eastText.textContent = fmt(east);
+  els.westText.textContent = fmt(west);
+  els.crossText.textContent = fmt(cross);
+  els.eastBar.style.width = `${(east / total) * 100}%`;
+  els.westBar.style.width = `${(west / total) * 100}%`;
+  els.crossBar.style.width = `${(cross / total) * 100}%`;
+}
+
+function renderList(ships) {
+  const notable = ships
+    .filter((v) => Number(v.length) > 140 || Number(v.dwt) > 80000)
+    .sort((a, b) => (Number(b.dwt) || Number(b.length)) - (Number(a.dwt) || Number(a.length)))
+    .slice(0, 12);
+  els.vesselList.innerHTML = '';
+  notable.forEach((v) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<b>${escapeHtml(v.name || '[Unnamed]')}</b><span>${escapeHtml(v.shiptypeLabel || v.category)} · ${Number(v.speed || 0).toFixed(1)} kn</span>`;
+    li.addEventListener('click', () => showDetail(v.id, true));
+    els.vesselList.appendChild(li);
+  });
+}
+
+function showDetail(id, fly) {
+  const v = state.snapshot?.vessels.find((item) => item.id === id);
+  if (!v) return;
+  state.selected = id;
+  els.detail.classList.remove('hidden');
+  els.detailType.textContent = `${v.shiptypeLabel || v.category || 'Unknown'} · ${v.flag || '--'}`;
+  els.detailName.textContent = v.name || '[Unnamed]';
+  els.detailFlag.textContent = v.flag || '-';
+  els.detailSpeed.textContent = `${Number(v.speed || 0).toFixed(1)} kn`;
+  els.detailCourse.textContent = `${Math.round(v.course || v.heading || 0)} deg`;
+  els.detailDest.textContent = v.destination || '-';
+  els.detailSize.textContent = v.length ? `${Math.round(v.length)} x ${Math.round(v.width || 0)} m` : '-';
+  els.detailAge.textContent = v.elapsedMin >= 0 ? `${Math.round(v.elapsedMin)} min ago` : '-';
+  if (fly) map.flyTo({ center: [v.lon, v.lat], zoom: Math.max(9.4, map.getZoom()), duration: 700 });
+}
+
+function validBearing(value) {
+  return Number(value) > 0 && Number(value) <= 360;
+}
+
+function fmt(value) {
+  return Number(value || 0).toLocaleString('en-US');
+}
+
+function age(timestamp) {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  return `${Math.round(minutes / 60)}h ago`;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+}
+
+buildChips();
+els.refresh.addEventListener('click', loadAll);
+els.search.addEventListener('input', (event) => {
+  state.query = event.target.value.trim();
+  render();
+});
+els.closeDetail.addEventListener('click', () => els.detail.classList.add('hidden'));
+setInterval(() => {
+  if (state.snapshot) els.updated.textContent = age(state.snapshot.generatedAt || state.snapshot.fetchedAt);
+}, 1000);
