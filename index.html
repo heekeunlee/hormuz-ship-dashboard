@@ -3,14 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hormuz Ship Dashboard</title>
-  <meta name="description" content="Live AIS dashboard for ships around the Strait of Hormuz.">
+  <title>Hormuz Radar</title>
+  <meta name="description" content="Live AIS radar dashboard for vessels around the Strait of Hormuz.">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://tiles.openfreemap.org">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
+  <div class="splash" id="splash" aria-label="Hormuz Radar loading screen">
+    <div class="splash-map" aria-hidden="true"></div>
+    <div class="splash-card">
+      <div class="radar-logo" aria-hidden="true">
+        <svg viewBox="0 0 220 220" role="img">
+          <defs>
+            <linearGradient id="radarSweep" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stop-color="#22d3ee" stop-opacity="0.9"/>
+              <stop offset="0.55" stop-color="#34d399" stop-opacity="0.26"/>
+              <stop offset="1" stop-color="#34d399" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <circle cx="110" cy="110" r="92" class="radar-ring radar-ring-outer"/>
+          <circle cx="110" cy="110" r="62" class="radar-ring"/>
+          <circle cx="110" cy="110" r="31" class="radar-ring"/>
+          <path class="strait-line" d="M51 131 C72 103, 82 89, 112 91 C139 92, 150 111, 169 85"/>
+          <path class="strait-line strait-line-alt" d="M47 145 C77 118, 88 110, 115 111 C143 112, 154 130, 177 102"/>
+          <g class="ship ship-a">
+            <path d="M0 -9 L20 0 L0 9 L4 2 L-10 2 L-10 -2 L4 -2 Z"/>
+          </g>
+          <g class="ship ship-b">
+            <path d="M0 -7 L16 0 L0 7 L3 2 L-8 2 L-8 -2 L3 -2 Z"/>
+          </g>
+          <g class="ship ship-c">
+            <path d="M0 -6 L14 0 L0 6 L3 2 L-7 2 L-7 -2 L3 -2 Z"/>
+          </g>
+          <g class="radar-sweep">
+            <path d="M110 110 L110 18 A92 92 0 0 1 195 75 Z"/>
+          </g>
+          <circle cx="110" cy="110" r="4" class="radar-core"/>
+        </svg>
+      </div>
+      <p class="splash-eyebrow">Live AIS · Strait Scan</p>
+      <h2 data-i18n="splashBrand">호르무즈 레이더</h2>
+      <p class="splash-copy" data-i18n="splashTagline">실시간 AIS 선박 관제</p>
+      <div class="splash-status">
+        <span></span>
+        <b data-i18n="splashStatus">해협 통항 신호 확인 중...</b>
+      </div>
+    </div>
+  </div>
   <main class="shell">
     <section class="map-wrap">
       <div id="map"></div>
@@ -18,7 +59,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow" data-i18n="eyebrow">Live AIS · 호르무즈 해협</p>
-          <h1 data-i18n="title">호르무즈 선박 대시보드</h1>
+          <h1 data-i18n="title">호르무즈 레이더</h1>
         </div>
         <div class="top-actions">
           <button class="trail-toggle" id="trailToggle" type="button" data-i18n="trailToggleOff">48시간 궤적</button>

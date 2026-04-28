@@ -33,9 +33,202 @@ body {
   font-size: 14px;
 }
 
+body.splash-active {
+  overflow: hidden;
+}
+
 button,
 input {
   font: inherit;
+}
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(8, 145, 178, 0.24), transparent 34%),
+    linear-gradient(145deg, #081923 0%, #0e2730 42%, #12202a 100%);
+  color: #e9fbff;
+  transition: opacity 420ms ease, visibility 420ms ease;
+}
+
+.splash.is-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-map {
+  position: absolute;
+  inset: -10%;
+  background:
+    linear-gradient(rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 60% 40%, rgba(217, 119, 6, 0.18), transparent 18%),
+    radial-gradient(circle at 40% 64%, rgba(45, 212, 191, 0.14), transparent 22%);
+  background-size: 42px 42px, 42px 42px, auto, auto;
+  opacity: 0.7;
+  transform: rotate(-4deg) scale(1.08);
+}
+
+.splash-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  width: min(420px, calc(100vw - 40px));
+  padding: 30px 22px 28px;
+  text-align: center;
+}
+
+.radar-logo {
+  width: min(220px, 58vw);
+  aspect-ratio: 1;
+  filter: drop-shadow(0 26px 40px rgba(0, 0, 0, 0.32));
+}
+
+.radar-logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.radar-ring {
+  fill: rgba(6, 32, 42, 0.72);
+  stroke: rgba(103, 232, 249, 0.42);
+  stroke-width: 1.4;
+}
+
+.radar-ring-outer {
+  fill: rgba(4, 18, 26, 0.82);
+  stroke: rgba(52, 211, 153, 0.7);
+  stroke-width: 2;
+}
+
+.strait-line {
+  fill: none;
+  stroke: rgba(14, 165, 233, 0.92);
+  stroke-linecap: round;
+  stroke-width: 7;
+}
+
+.strait-line-alt {
+  stroke: rgba(251, 191, 36, 0.74);
+  stroke-width: 3;
+}
+
+.ship {
+  fill: #f8fafc;
+  filter: drop-shadow(0 0 10px rgba(103, 232, 249, 0.8));
+}
+
+.ship-a {
+  animation: shipA 3s ease-in-out both;
+}
+
+.ship-b {
+  animation: shipB 3s ease-in-out both;
+}
+
+.ship-c {
+  animation: shipC 3s ease-in-out both;
+}
+
+.radar-sweep {
+  fill: url("#radarSweep");
+  opacity: 0.95;
+  transform-origin: 110px 110px;
+  animation: radarSpin 3s cubic-bezier(0.33, 0, 0.2, 1) both;
+}
+
+.radar-core {
+  fill: #fbbf24;
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.9));
+}
+
+.splash-eyebrow {
+  margin: 18px 0 8px;
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.splash h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(34px, 8vw, 56px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.splash-copy {
+  margin: 12px 0 0;
+  color: rgba(233, 251, 255, 0.78);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.splash-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 36px;
+  margin-top: 20px;
+  padding: 9px 13px;
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 999px;
+  background: rgba(3, 17, 24, 0.48);
+  color: rgba(233, 251, 255, 0.88);
+  font-size: 12px;
+}
+
+.splash-status span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.9);
+  animation: pulseDot 900ms ease-in-out infinite;
+}
+
+.splash-status b {
+  font-weight: 800;
+}
+
+@keyframes radarSpin {
+  from { transform: rotate(-72deg); }
+  to { transform: rotate(648deg); }
+}
+
+@keyframes shipA {
+  0% { opacity: 0; transform: translate(55px, 132px) rotate(-31deg) scale(0.8); }
+  18% { opacity: 1; }
+  100% { opacity: 1; transform: translate(154px, 88px) rotate(-21deg) scale(1); }
+}
+
+@keyframes shipB {
+  0%, 15% { opacity: 0; transform: translate(174px, 138px) rotate(157deg) scale(0.8); }
+  38% { opacity: 1; }
+  100% { opacity: 1; transform: translate(84px, 104px) rotate(198deg) scale(1); }
+}
+
+@keyframes shipC {
+  0%, 32% { opacity: 0; transform: translate(91px, 69px) rotate(20deg) scale(0.8); }
+  56% { opacity: 1; }
+  100% { opacity: 1; transform: translate(146px, 119px) rotate(29deg) scale(1); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.48; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 .map-wrap {
@@ -549,6 +742,19 @@ footer {
       linear-gradient(90deg, rgba(245, 248, 251, 0.46), rgba(245, 248, 251, 0.04));
   }
 
+  .splash-card {
+    padding-top: 18px;
+  }
+
+  .radar-logo {
+    width: min(190px, 58vw);
+  }
+
+  .splash-status {
+    max-width: 100%;
+    font-size: 11px;
+  }
+
   .topbar {
     left: 14px;
     right: 14px;
@@ -727,6 +933,20 @@ footer {
   footer {
     display: none;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash,
+  .radar-sweep,
+  .ship,
+  .splash-status span {
+    animation: none;
+    transition: none;
+  }
+
+  .ship-a { transform: translate(154px, 88px) rotate(-21deg); }
+  .ship-b { transform: translate(84px, 104px) rotate(198deg); }
+  .ship-c { transform: translate(146px, 119px) rotate(29deg); }
 }
 
 @media (max-width: 520px) {

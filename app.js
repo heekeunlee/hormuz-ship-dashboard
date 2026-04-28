@@ -13,7 +13,10 @@ const CATEGORIES = [
 const I18N = {
   ko: {
     eyebrow: 'Live AIS · 호르무즈 해협',
-    title: '호르무즈 선박 대시보드',
+    title: '호르무즈 레이더',
+    splashBrand: '호르무즈 레이더',
+    splashTagline: '실시간 AIS 선박 관제',
+    splashStatus: '해협 통항 신호 확인 중...',
     metricTotal: '전체 선박',
     metricChoke: '해협 내부',
     metricTankers: '탱커',
@@ -61,7 +64,10 @@ const I18N = {
   },
   en: {
     eyebrow: 'Live AIS · Strait of Hormuz',
-    title: 'Hormuz Ship Dashboard',
+    title: 'Hormuz Radar',
+    splashBrand: 'Hormuz Radar',
+    splashTagline: 'Live AIS Vessel Watch',
+    splashStatus: 'Scanning the Strait...',
     metricTotal: 'Total vessels',
     metricChoke: 'In chokepoint',
     metricTankers: 'Tankers',
@@ -127,6 +133,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 const els = {
+  splash: $('splash'),
   status: $('status'),
   langToggle: $('langToggle'),
   trailToggle: $('trailToggle'),
@@ -818,6 +825,15 @@ function applyLanguage() {
   if (state.selected) showDetail(state.selected, false);
 }
 
+function startSplash() {
+  if (!els.splash) return;
+  document.body.classList.add('splash-active');
+  window.setTimeout(() => {
+    els.splash.classList.add('is-hidden');
+    document.body.classList.remove('splash-active');
+  }, 3000);
+}
+
 function applyTrailButtonLabel() {
   if (state.trailsLoading) {
     els.trailToggle.textContent = t('trailLoading');
@@ -828,6 +844,7 @@ function applyTrailButtonLabel() {
 
 buildChips();
 applyLanguage();
+startSplash();
 els.refresh.addEventListener('click', loadAll);
 els.trailToggle.addEventListener('click', toggleTrails);
 els.langToggle.addEventListener('click', () => {
