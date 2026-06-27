@@ -1,4 +1,41 @@
 const API = 'https://hormuz.now/api';
+const CACHE_KEYS = {
+  region: 'hormuzRegionCache',
+  snapshot: 'hormuzSnapshotCache',
+};
+
+const FALLBACK_REGION = {
+  chokePoint: { west: 55.88, east: 56.9, south: 26.18, north: 26.72 },
+  lanes: {
+    inbound: [
+      { lon: 55.78, lat: 26.34 },
+      { lon: 56.05, lat: 26.4 },
+      { lon: 56.34, lat: 26.5 },
+      { lon: 56.76, lat: 26.61 },
+      { lon: 57.12, lat: 26.65 },
+    ],
+    outbound: [
+      { lon: 57.12, lat: 26.48 },
+      { lon: 56.78, lat: 26.48 },
+      { lon: 56.38, lat: 26.4 },
+      { lon: 56.08, lat: 26.29 },
+      { lon: 55.76, lat: 26.22 },
+    ],
+  },
+};
+
+const FALLBACK_VESSELS = [
+  { id: 'demo-1', name: 'Gulf Horizon', flag: 'LR', category: 'tanker', lon: 56.42, lat: 26.49, speed: 12.4, heading: 78, course: 78, destination: 'Fujairah', length: 333, width: 60, dwt: 299000, elapsedMin: 6 },
+  { id: 'demo-2', name: 'Zagros Trader', flag: 'PA', category: 'cargo', lon: 56.08, lat: 26.31, speed: 10.1, heading: 258, course: 258, destination: 'Jebel Ali', length: 228, width: 32, dwt: 76000, elapsedMin: 11 },
+  { id: 'demo-3', name: 'Musandam Pilot', flag: 'OM', category: 'tug', lon: 56.52, lat: 26.57, speed: 5.8, heading: 43, course: 43, destination: 'Khasab', length: 34, width: 11, dwt: 0, elapsedMin: 4 },
+  { id: 'demo-4', name: 'Al Noor', flag: 'AE', category: 'cargo', lon: 55.96, lat: 26.21, speed: 8.7, heading: 92, course: 92, destination: 'Sharjah', length: 148, width: 24, dwt: 18000, elapsedMin: 18 },
+  { id: 'demo-5', name: 'Pacific Meridian', flag: 'MH', category: 'tanker', lon: 56.82, lat: 26.63, speed: 13.2, heading: 252, course: 252, destination: 'Ras Tanura', length: 274, width: 48, dwt: 158000, elapsedMin: 9 },
+  { id: 'demo-6', name: 'Dibba Pearl', flag: 'IR', category: 'fishing', lon: 56.22, lat: 26.67, speed: 2.6, heading: 188, course: 188, destination: '', length: 28, width: 7, dwt: 0, elapsedMin: 21 },
+  { id: 'demo-7', name: 'Strait Express', flag: 'BH', category: 'highspeed', lon: 56.66, lat: 26.41, speed: 18.9, heading: 74, course: 74, destination: 'Bandar Abbas', length: 52, width: 12, dwt: 0, elapsedMin: 3 },
+  { id: 'demo-8', name: 'Hormuz Light', flag: 'OM', category: 'navaid', lon: 56.31, lat: 26.52, speed: 0, heading: 0, course: 0, destination: '', length: 12, width: 12, dwt: 0, elapsedMin: 0 },
+  { id: 'demo-9', name: 'Eastern Promise', flag: 'SG', category: 'cargo', lon: 56.92, lat: 26.52, speed: 9.4, heading: 265, course: 265, destination: 'Doha', length: 190, width: 30, dwt: 52000, elapsedMin: 14 },
+  { id: 'demo-10', name: 'Nissos Qeshm', flag: 'GR', category: 'tanker', lon: 55.86, lat: 26.35, speed: 11.7, heading: 86, course: 86, destination: 'Kuwait', length: 249, width: 44, dwt: 115000, elapsedMin: 7 },
+];
 
 const CATEGORIES = [
   ['tanker', '#45df9f'],
@@ -43,6 +80,8 @@ const I18N = {
     loading: '불러오는 중',
     ships: '척',
     apiError: 'API 오류',
+    offlineData: '오프라인 데이터',
+    cachedData: '저장된 데이터',
     unknown: '미상',
     unnamed: '[이름 없음]',
     noDestination: '-',
@@ -94,6 +133,8 @@ const I18N = {
     loading: 'Loading',
     ships: 'ships',
     apiError: 'API error',
+    offlineData: 'Offline data',
+    cachedData: 'Cached data',
     unknown: 'Unknown',
     unnamed: '[Unnamed]',
     noDestination: '-',
@@ -241,12 +282,20 @@ async function loadAll() {
     ]);
     state.region = region;
     state.snapshot = snapshot;
+    writeCache(CACHE_KEYS.region, region);
+    writeCache(CACHE_KEYS.snapshot, snapshot);
     renderRegion();
     render();
     setStatus('live', 'liveCount');
   } catch (error) {
     console.error(error);
-    setStatus('error', 'apiError');
+    const cachedRegion = readCache(CACHE_KEYS.region);
+    const cachedSnapshot = readCache(CACHE_KEYS.snapshot);
+    state.region = cachedRegion || FALLBACK_REGION;
+    state.snapshot = normalizeFallbackSnapshot(cachedSnapshot || makeFallbackSnapshot());
+    renderRegion();
+    render();
+    setStatus(cachedRegion && cachedSnapshot ? 'offline' : 'demo', cachedRegion && cachedSnapshot ? 'cachedData' : 'offlineData');
   }
 }
 
@@ -254,6 +303,78 @@ async function fetchJson(url) {
   const response = await fetch(url, { cache: 'no-store' });
   if (!response.ok) throw new Error(`${response.status} ${url}`);
   return response.json();
+}
+
+function readCache(key) {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage can be unavailable in private browsing or strict browser modes.
+  }
+}
+
+function normalizeFallbackSnapshot(snapshot) {
+  const now = Date.now();
+  return {
+    ...snapshot,
+    generatedAt: snapshot.generatedAt || now,
+    fetchedAt: snapshot.fetchedAt || now,
+    vessels: (snapshot.vessels || []).map((vessel, index) => ({
+      ...vessel,
+      id: vessel.id || `fallback-${index}`,
+      elapsedMin: Number.isFinite(Number(vessel.elapsedMin)) ? Number(vessel.elapsedMin) : 0,
+    })),
+  };
+}
+
+function makeFallbackSnapshot() {
+  const vessels = FALLBACK_VESSELS.map((vessel) => ({ ...vessel }));
+  const stats = vessels.reduce((acc, vessel) => {
+    const speed = Number(vessel.speed) || 0;
+    const category = vessel.category || 'unknown';
+    const course = Number(vessel.course || vessel.heading) || 0;
+    const inChoke = vessel.lon >= FALLBACK_REGION.chokePoint.west &&
+      vessel.lon <= FALLBACK_REGION.chokePoint.east &&
+      vessel.lat >= FALLBACK_REGION.chokePoint.south &&
+      vessel.lat <= FALLBACK_REGION.chokePoint.north;
+
+    acc.speedTotal += speed;
+    if (inChoke) acc.inChokePoint += 1;
+    if (category === 'tanker') acc.tankers += 1;
+    if (category === 'cargo') acc.cargo += 1;
+    if (course >= 45 && course <= 135) acc.eastbound += 1;
+    else if (course >= 225 && course <= 315) acc.westbound += 1;
+    else acc.northSouth += 1;
+    return acc;
+  }, {
+    inChokePoint: 0,
+    tankers: 0,
+    cargo: 0,
+    eastbound: 0,
+    westbound: 0,
+    northSouth: 0,
+    speedTotal: 0,
+  });
+
+  stats.avgSpeed = stats.speedTotal / Math.max(1, vessels.length);
+  delete stats.speedTotal;
+
+  return {
+    count: vessels.length,
+    generatedAt: Date.now(),
+    fetchedAt: Date.now(),
+    stats,
+    vessels,
+  };
 }
 
 async function fetchTrailRows() {
@@ -793,6 +914,8 @@ function statusText(key) {
   if (key === 'liveCount') return `${fmt(state.snapshot?.count || 0)} ${t('ships')}`;
   if (key === 'loading') return t('loading');
   if (key === 'apiError') return t('apiError');
+  if (key === 'offlineData') return t('offlineData');
+  if (key === 'cachedData') return t('cachedData');
   if (key === 'connecting') return t('connecting');
   return key;
 }

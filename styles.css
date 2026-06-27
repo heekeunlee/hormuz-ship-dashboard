@@ -377,6 +377,12 @@ h1 {
   box-shadow: 0 0 16px rgba(225, 29, 72, 0.5);
 }
 
+.status.offline span,
+.status.demo span {
+  background: var(--amber);
+  box-shadow: 0 0 16px rgba(217, 119, 6, 0.55);
+}
+
 .left-rail {
   position: absolute;
   z-index: 2;
